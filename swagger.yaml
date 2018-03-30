@@ -1,0 +1,988 @@
+################################################################################
+#                                 Intro                                        #
+################################################################################
+swagger: '2.0'
+
+info:
+  version: '1.0.0'
+  title: 'Users services'
+  description: 'Microservizio per la gestione degli utenti.'
+  contact:
+    name: Massimiliano Mirelli
+    email: m.mirelli@quidinfo.it
+    url: http://eservant.quidinfo.it
+  license:
+    name: TODO License
+
+
+consumes:
+  - application/json
+produces:
+  - application/json
+  
+################################################################################
+#                                Host                                          #
+################################################################################  
+
+host: eservant.quidinfo.it
+basePath: /
+schemes: [https]
+
+################################################################################
+#                        Resources (Request<>Response)                         #
+################################################################################
+
+paths:
+  /users:
+    get:
+      description:  Ritorna la lista di tutti gli utenti. 
+                    La richiesta non ha vincoli particolari di formato.
+                    Servizio utile a back-office.
+      responses:
+        200:
+          description: Visualizzazione della lista degli utenti.
+          schema:
+            $ref: '#/definitions/CEUsersList'
+        403:
+          description: Utente non esistente.
+          schema:
+            $ref: '#/definitions/CEExistingError'
+
+        500:
+          description: Errore del server.
+          schema:
+            $ref: '#/definitions/CEServerError'
+
+  /users/{username}:
+    get:
+      description: Ritorna info dell'utente il cui username viene passato in
+                   input.
+                   Lo username deve essere passato come parametro nello URI
+                   della request.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          type: string
+          pattern: '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+                  (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+                  |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+      responses:
+        200:
+          description: Visualizzazione dei dati dell'utente.
+          schema:
+            $ref: '#/definitions/CEAllUserData'
+        500:
+          description: Errore del server.
+          schema:
+            $ref: '#/definitions/CEServerError'      
+      
+  
+  /users/register:
+    post:
+      consumes:
+          - application/json
+
+      description: \[***STABLE***\] \[***SERVICED***\] <br/><br/>Registrazione e creazione di un nuovo utente. 
+                   Seguire il format della request in esempio. Il role indica i diritti 
+                   di accesso al sistema dell'utente da registrare (`ADMIN_QUID`, 
+                   `ADMIN_EVENT`, `ADMIN_FACILITY`, `USER_APP` etc.). Ritorna le info 
+                   passate nel body ed il `JWTToken`.
+      parameters:
+        - name: newusers
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/UserDataRegister'
+      responses:
+        201: 
+          description: Utente generato.
+          schema:
+            $ref: '#/definitions/CEAllUserData'
+        500:
+          description: Errore del server.
+          schema:
+            $ref: '#/definitions/CEServerError'
+        501:
+          description: Username duplicato.
+          schema:
+            $ref: '#/definitions/CEDuplicateError'
+  
+  
+  /users/login-social:
+  
+    post:
+      consumes:
+          - application/json
+#\[***STABLE***\] <br/><br/>
+      description: \[***STABLE***\] \[***SERVICED***\] <br/><br/> Effettua login-social. Richiede social network token (funziona così per Facebook). 
+                   Ritorna `JWTToken` e dati utente reperiti da account del social di riferimento.
+      parameters:
+        - name: socialInfo
+          in: body
+          required: true
+          schema: 
+            $ref: '#/definitions/CESocialUser'
+      responses:
+        200:
+          description: Login avvenuto con successo.
+          schema:
+            $ref: '#/definitions/CEAllUserData'
+        500:
+          description: server error
+          schema:
+            $ref: '#/definitions/CEServerError'
+  
+  
+  /users/login:
+    post:
+      consumes:
+           - application/x-www-form-urlencoded
+      description: \[***STABLE***\] \[***SERVICED***\]<br/><br/> Effettua login. L'inserimento di `username` (e-mail), `password` e `deviceToken`
+                   deve avvenire in formato `x-www-form-urlencoded`.
+      parameters:
+       - name: username
+         in: formData
+         description: E-mail dell'utente
+         required: true
+         type: string
+         default: cj@quidinfo.it
+       - name: password
+         in: formData
+         description: user password
+         required: true
+         type: string
+         default: password_example
+       - name: deviceToken
+         in: formData
+         description: Device token relativo al dispositivo dell'utente
+         required: true
+         type: string
+         default: 'fOIT6h15i7U:APA91bE90sn87vqvUQv2eMWcKA0z626Bz-ypCI-J_I5f3gWEIr7ISLqE1qZszSGWOcNF-EcO3yiCf5mWv6-S5sTBB4oa916lhpd_6oSFGDMo5UU-4LnXYFkAOR8bLDQdBp0a6EB8M3f0'
+      responses:
+        200:
+          description: Login avvenuto.
+          schema:
+            $ref: '#/definitions/CEAllUserData'
+        401:
+          description: Non autorizzato.
+          schema:
+            $ref: '#/definitions/CEAuthError'
+        500:
+          description: Errore server.
+          schema:
+            $ref: '#/definitions/CEServerError'
+    
+  /users/{username}/token:
+    post:
+      consumes:
+           - application/x-www-form-urlencoded
+      description: Ritorna un nuovo token.
+      
+      parameters:
+       - name: username
+         in: path
+         description: E-mail dell'utente per cui si richiede un nuovo token
+         required: true
+         type: string
+         default: g.tassoni@quidinfo.it
+         
+      responses:
+        200:
+          description: token ritornato.
+          schema:
+            $ref: '#/definitions/CECreateTokenData'
+        401:
+          description: Non autorizzato.
+          schema:
+            $ref: '#/definitions/CEAuthError'
+        500:
+          description: Errore server.
+          schema:
+            $ref: '#/definitions/CEServerError'
+    
+    
+  /users/{username}/join/events/{id}:
+    get:
+      description:   \[***STABLE***\] <br/><br/>Ritorna la lista di tutti gli utenti, possibilmente amici di user `id`, 
+                    che parteciperanno all'evento.
+      
+      parameters:
+       - name: username
+         in: path
+         description: E-mail dell'utente di cui si cercano gli amici partecipanti
+         required: true
+         type: string
+         default: g.tassoni@quidinfo.it
+       - name: id
+         in: path
+         description: identificatore dell'evento a cui gli utenti elencati parteciperanno
+         required: true
+         type: number
+         default: 11234356
+      responses:
+        200:
+          description: Ritorna la lista di tutti gli utenti, possibilmente amici di user `id`, 
+                       che parteciperanno all'evento.
+          schema:
+            $ref: '#/definitions/CEFriendsList'
+            
+  /users/{username}/peers:
+    get:
+      description:  \[***STABLE***\] <br/><br/>Ritorna la lista di tutti gli utenti, simili allo user `username`.
+      
+      parameters:
+       - name: username
+         in: path
+         description: E-mail dell'utente di cui si cercano gli utenti affini
+         required: true
+         type: string
+         default: g.tassoni@quidinfo.it
+      responses:
+        200:
+          description: Ritorna la lista di tutti gli utenti affini.
+          schema:
+            $ref: '#/definitions/CEPeersList'
+            
+  /users/{username}/peers/{peer_username}:
+    get:
+      description:  \[***STABLE***\] <br/><br/>Ritorna il dettaglio dell'affine (`peer_username`) rispetto a user `username`.
+      
+      parameters:
+       - name: username
+         in: path
+         description: E-mail dell'utente di cui si cercano gli utenti affini
+         required: true
+         type: string
+         default: g.tassoni@quidinfo.it
+      
+       - name: peer_username
+         in: path
+         description: E-mail dell'affine di cui si cerca dettaglio
+         required: true
+         type: string
+         default: g.tassoni@quidinfo.it
+         
+      responses:
+        200:
+          description: Ritorna la lista di tutti gli utenti affini.
+          schema:
+            $ref: '#/definitions/CEPeerDetail'
+  
+  /users/{username}/send-message:
+    post:
+      consumes:
+          - application/json
+      description: \[***STABLE***\] <br/><br/> Manda un messaggio push a user `usernameReceiver`, da parte di utente `username`, 
+                   specificato nel body. Anche il messaggio viene definito nel body.
+      parameters:
+      - name: username
+        in: path
+        description: E-mail del mittente
+        required: true
+        type: string
+        default: g.tassoni@quidinfo.it
+      - name: newusers
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/SendMessageReq'
+      
+      responses:
+        200:
+          description: call entity vuota se successo
+          schema:
+            $ref: '#/definitions/CEVoid'
+        504:
+          description: errore push notification
+          schema:
+            $ref: '#/definitions/CEPushFailedError'
+          
+   
+responses:
+  NoContent:
+    description: La richiesta è stata eseguita ma nulla da tornare.
+  BadRequest:
+    description: Richiesta non valida.
+  NotModified:
+    description: La risorsa specificata non è stata modificata.
+  NotFound:
+    description: La risorsa specificata non è stata trovata.
+  Unauthorized:
+    description: Non autorizzato.
+
+################################################################################
+#                                 Definitions                                  #
+################################################################################
+
+securityDefinitions:
+  JWT:
+    type: apiKey
+    description: JSON Web token codificato mediante Base64. Permette al BackEnd di identificare utente,
+                 dunque ogni richiesta di servizio User "sensibile",che riguardi la modifica di dati
+                 importanti, deve contenerlo. 
+    name: "Authorization: Bearer"
+    in: header
+    
+definitions:
+
+
+##################################################################################
+#                       Definitions.Entities                                     #
+##################################################################################
+ 
+  AllUserData:
+    required:
+      - username
+      - firstname
+      - lastname
+      - phoneNumber
+      - pic
+      - deviceToken
+  #    - password
+  #    - role
+  #    - jwtToken
+    properties:
+
+      username:
+        type: string
+        description: email dell'utente
+        default: giova@gm.it
+
+      firstname:
+        type: string
+        description: Nome dell'utente
+        default: Giovanni
+      
+      lastname:
+        type: string
+        description: Cognome dell'utente
+        example: Tassoni
+        
+  #    password:
+  #      type: string
+  #      description: password utente
+  #      default: user_password
+      
+      phoneNumber:
+        type: number
+        description: numero di cellulare dell'utente
+        default: 3293345322
+      
+  #    role:
+  #      type: string
+  #      description: diritti di accesso
+  #      default: "ADMIN_QUID"
+
+      pic:
+        type: string
+        description: url immagine
+        default: 'https://www.google.it/search?q=image'
+
+        
+      deviceToken:
+        type: string
+        description: token da riferito al dispositivo dell'utente
+        default: 'fOIT6h15i7U:APA91bE90sn87vqvUQv2eMWcKA0z626Bz-ypCI-J_I5f3gWEIr7ISLqE1qZszSGWOcNF-EcO3yiCf5mWv6-S5sTBB4oa916lhpd_6oSFGDMo5UU-4LnXYFkAOR8bLDQdBp0a6EB8M3f0'
+
+  #    isFollower:
+  #      type: boolean
+  #      description: evidenzia se l'utente è iscritto ad un certo impianto
+  #      default: false
+      
+  UserData:
+      required:
+        - firstname
+        - lastname
+        - username
+        - password
+        - role
+  #      - phoneNumber
+        - deviceToken
+      properties:
+        firstname:
+          type: string
+          description: nome utente
+          example: giovanni
+          default: the user firstname
+        
+        lastname:
+          type: string
+          description: cognome utente
+          example: tassoni
+          default: the user surname
+          
+        username:
+          type: string
+          description: e-mail, usata come id utente
+    #      pattern:  '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+    #                (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+    #                |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+          example: giova@gm.it
+          default: user@quidinfo.it
+          
+        password:
+          type: string
+          description: password dell'utente
+          default: user_password
+        
+        phoneNumber:
+          type: number
+          description: numero di cellulare dell'utente
+          default: 3293345322
+  
+        role:
+          type: string
+          description: diritti di accesso
+          default: USER_APP
+          
+        deviceToken:
+          type: string
+          description: identificatore del dispositivo dell'utente
+          default: 'fOIT6h15i7U:APA91bE90sn87vqvUQv2eMWcKA0z626Bz-ypCI-J_I5f3gWEIr7ISLqE1qZszSGWOcNF-EcO3yiCf5mWv6-S5sTBB4oa916lhpd_6oSFGDMo5UU-4LnXYFkAOR8bLDQdBp0a6EB8M3f0'
+        
+        isFollower:
+          type: boolean
+          description: evidenzia se l'utente è iscritto ad un certo impianto
+          default: false
+
+# Non c'è IsFollower
+  UserDataRegister:
+      required:
+        - firstname
+        - lastname
+        - username
+        - password
+        - role
+  #      - phoneNumber
+        - deviceToken
+      properties:
+        firstname:
+          type: string
+          description: nome utente
+          example: giovanni
+          default: the user firstname
+        
+        lastname:
+          type: string
+          description: cognome utente
+          example: tassoni
+          default: the user surname
+          
+        username:
+          type: string
+          description: e-mail, usata come id utente
+    #      pattern:  '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+    #                (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+    #                |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+          example: giova@gm.it
+          default: user@quidinfo.it
+          
+        password:
+          type: string
+          description: password dell'utente
+          default: user_password
+        
+        phoneNumber:
+          type: number
+          description: numero di cellulare dell'utente
+          default: 3293345322
+  
+        role:
+          type: string
+          description: diritti di accesso
+          default: USER_APP
+          
+        deviceToken:
+          type: string
+          description: identificatore del dispositivo dell'utente
+          default: 'fOIT6h15i7U:APA91bE90sn87vqvUQv2eMWcKA0z626Bz-ypCI-J_I5f3gWEIr7ISLqE1qZszSGWOcNF-EcO3yiCf5mWv6-S5sTBB4oa916lhpd_6oSFGDMo5UU-4LnXYFkAOR8bLDQdBp0a6EB8M3f0'
+
+  SocialUser:
+    required:
+      - socialName
+      - name
+      - socialToken
+    properties:
+      
+      socialName:
+        type: string
+        description: nome social 
+        default: Facebook
+        
+      socialToken:
+        type: string
+        description: token necessario per accesso a social
+        pattern: '^(\w{254})$'
+        default: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJNRFdfZmFiaWFubyIsImV4cCI6MTUxNTAxMDI2OCwianRpIjoieHFHbXhPZDVHdHlOQW5tNUxiTE5GdyIsImlhdCI6MTUxNDk4MTQ2OCwibmJmIjoxNTE0OTgxMzQ4LCJzdWIiOiJVU0VSREUiLCJ0aGVfY2xhaW0iOiJEZWFsZXJQRiJ9.b1l1WE_X6bjfuvnO4MckfO5tE6k8lyXPOzdGee9I3xY'
+
+      deviceToken:
+         type: string
+         description: Device token relativo al dispositivo dell'utente
+         default: 'fOIT6h15i7U:APA91bE90sn87vqvUQv2eMWcKA0z626Bz-ypCI-J_I5f3gWEIr7ISLqE1qZszSGWOcNF-EcO3yiCf5mWv6-S5sTBB4oa916lhpd_6oSFGDMo5UU-4LnXYFkAOR8bLDQdBp0a6EB8M3f0'
+
+  Friend:
+    required:
+      - firstname
+      - lastname
+      - username
+      - pic
+      - isGoing
+      
+  SendMessageReq:
+    required:
+    - toUser
+    - message
+    type: object
+    properties:
+      toUser:
+        type: string
+        default: f.biagioli@quidinfo.it
+      message:
+        type: string
+        default: "sample message"
+  
+##################################################################################
+#                       Definitions.Entities.CallEntities                        #
+##################################################################################
+
+  CEVoid:
+    required:
+     - metadata
+     - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: object
+
+  CESocialUser:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori 
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: object
+        $ref: '#/definitions/SocialUser'
+        
+  CEAllUserData:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            description: lista messaggi, vuota se non ci sono errori
+            items:
+              type: string
+              default: ''
+      payload:
+        type: object
+        properties:
+          user:
+            type: object
+            $ref: '#/definitions/AllUserData'
+          jwtToken:
+            type: string
+            description: Token mediante cui BackEnd riconosce utente
+            pattern: '^(\w{254})$'
+            default: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJNRFdfZmFiaWFubyIsImV4cCI6MTUxNTAxMDI2OCwianRpIjoieHFHbXhPZDVHdHlOQW5tNUxiTE5GdyIsImlhdCI6MTUxNDk4MTQ2OCwibmJmIjoxNTE0OTgxMzQ4LCJzdWIiOiJVU0VSREUiLCJ0aGVfY2xhaW0iOiJEZWFsZXJQRiJ9.b1l1WE_X6bjfuvnO4MckfO5tE6k8lyXPOzdGee9I3xY'
+ 
+  CECreateTokenData:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            description: lista messaggi, vuota se non ci sono errori
+            items:
+              type: string
+              default: ''
+      payload:
+        type: object
+        properties:
+          jwtToken:
+            type: string
+            description: Token mediante cui BackEnd riconosce utente
+            pattern: '^(\w{254})$'
+            default: 'eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJNRFdfZmFiaWFubyIsImV4cCI6MTUxNTAxMDI2OCwianRpIjoieHFHbXhPZDVHdHlOQW5tNUxiTE5GdyIsImlhdCI6MTUxNDk4MTQ2OCwibmJmIjoxNTE0OTgxMzQ4LCJzdWIiOiJVU0VSREUiLCJ0aGVfY2xhaW0iOiJEZWFsZXJQRiJ9.b1l1WE_X6bjfuvnO4MckfO5tE6k8lyXPOzdGee9I3xY'
+ 
+ 
+  CEFriendsList:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: array
+        items:
+          type: object
+          description: utente registrato nel sistema
+          allOf: 
+            - $ref: '#/definitions/Friend'
+          properties:  
+           username:
+             type: string
+             description: indirizzo email dell'utente 
+             pattern: '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+                        (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+                        |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+           firstname:
+              description: nome utente
+              type: string
+           lastname:
+              description: cognome utente
+              type: string
+           pic:
+              description: immagine dell'utente, se non esistesse, anonima, di default
+              type: string
+           isGoing:
+              description: segnala se l'utente parteciperà all'evento
+              type: boolean
+        
+        default:
+          - username: j.smith@quidinfo.it
+            firstname: Jessica 
+            lastname: Smith
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            isGoing: true
+          - username: r.stewart@quidinfo.it
+            firstname: Ron 
+            lastname: Stewart
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            isGoing: false
+          - username: f.biagioli@quidinfo.it
+            firstname: Fabiano 
+            lastname: Biagioli
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            isGoing: true
+
+  CEPeersList:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: array
+        items:
+          type: object
+          description: utente registrato nel sistema
+          allOf: 
+            - $ref: '#/definitions/Friend'
+          properties:  
+           username:
+             type: string
+             description: indirizzo email dell'utente 
+             pattern: '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+                        (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+                        |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+           firstname:
+              description: nome utente
+              type: string
+           lastname:
+              description: cognome utente
+              type: string
+           pic:
+              description: immagine dell'utente, se non esistesse, anonima, di default
+              type: string
+           similarity:
+              description: indica la percentuale di somiglianza rispetto all'utente `id`
+              type: number
+        
+        default:
+          - username: j.smith@quidinfo.it
+            firstname: Jessica 
+            lastname: Smith
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            similarity: 87
+          - username: r.stewart@quidinfo.it
+            firstname: Ron 
+            lastname: Stewart
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            similarity: 23
+          - username: f.biagioli@quidinfo.it
+            firstname: Fabiano 
+            lastname: Biagioli
+            pic: 06d7767b-81ae-480b-849b-0340f9ae1918.jpeg
+            similarity: 71
+
+
+  CEPeerDetail:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: object
+        description: utente registrato nel sistema
+        properties:  
+         generalAffinity:
+           type: number
+           description: percentuale affinità
+           default: 59
+         affinityIndicators:
+            description: lista di indicatori di affinità
+            type: array
+            items: 
+              type: object
+              description: indicatore di affinità
+              properties:
+                text:
+                  type: string
+                  description: descrizione dell'indicatore di affinità
+                similarity:
+                  type: number
+                  description: percentuale di affinità
+        default:
+            generalAffinity: 50
+            affinityIndicators:
+              - text: 'storia'
+                similarity: 40
+              - text: 'sport'
+                similarity: 80
+              - text: 'music'
+                similarity: 20
+                  
+                  
+  CEUsersList:
+    required:
+    - metadata
+    - payload
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            description: lista messaggi, vuota se non ci sono errori
+            type: array
+            items:
+              type: string
+              default: ''
+      payload:
+        type: array
+        items:
+          type: object
+          description: utente registrato nel sistema
+          allOf: 
+            - $ref: '#/definitions/AllUserData'
+          properties:
+            username:
+              type: string
+              description: e-mail utente
+  #            pattern: '^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|
+  #                           (".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])
+  #                          |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$'
+            firstname:
+              type: string
+              description: nome utente
+            lastname:
+              type: string
+              description: cognome utente
+            password:
+              type: string
+              description: password utente
+            phoneNumber:
+              type: string
+              description: numero di cellulare dell'utente
+  
+##################################################################################
+#                       Definitions.Errors                                       #
+##################################################################################
+  
+  ErrorMessage:
+    description: ad ora unico errore ritornato, da definire meglio le tipologie
+    required:
+    - message
+    - title
+    - type
+    - target
+    - errorCode
+    type: object
+    properties:
+      message: 
+        type: string
+        description: descrizione del messaggio di errore
+        default: 'Errore server'
+      title: 
+        type: string
+        description: nome messaggio di errore
+        default: 'GENERAL_ERROR'
+      type:
+        type: string
+        description: tipo di messaggio di errore
+        default: 'error'
+      target:
+        type: string
+        description: tipologia di visualizzazione dell'errore
+        default: 'modal'
+      errorCode:
+        type: string
+        description: codice di errore
+        default: '-1'
+        
+  PushFailedMessage:
+    description: ad ora unico errore ritornato, da definire meglio le tipologie
+    required:
+    - message
+    - title
+    - type
+    - target
+    - errorCode
+    type: object
+    properties:
+      message: 
+        type: string
+        description: descrizione del messaggio di errore
+        default: 'Message push failed'
+      title: 
+        type: string
+        description: nome messaggio di errore
+        default: 'GENERAL_ERROR'
+      type:
+        type: string
+        description: tipo di messaggio di errore
+        default: 'error'
+      target:
+        type: string
+        description: tipologia di visualizzazione dell'errore
+        default: 'modal'
+      errorCode:
+        type: string
+        description: codice di errore
+        default: '-1'      
+        
+        
+##################################################################################
+#                       Definitions.Errors.Errors.CallEntities                   #
+##################################################################################
+        
+  CEExistingError:
+    required:
+    - metadata
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            items:
+              $ref: '#/definitions/ErrorMessage'
+ 
+  CEAuthError:
+    required:
+    - metadata
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            items:
+              $ref: '#/definitions/ErrorMessage'
+   
+  CEDuplicateError: 
+    required:
+    - metadata
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            items:
+              $ref: '#/definitions/ErrorMessage'
+
+#      metadata:
+#       messages: 
+#          message: 'DUPLICATE_ERROR'
+#          title: 'Errore'
+#          type: 'error'
+#          target: 'modal'
+#          errorCode: 303
+      
+  CEPushFailedError:
+    required:
+    - metadata
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            items:
+              $ref: '#/definitions/PushFailedMessage'    
+      
+  CEServerError:
+    required:
+    - metadata
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          messages:
+            type: array
+            items:
+              $ref: '#/definitions/ErrorMessage'
